@@ -13,8 +13,8 @@ jobs:
       # Pin the app clock so the seed and the server agree on "today" regardless of when CI runs.
       DM_NOW: '2026-09-23T19:00:00Z'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -26,7 +26,7 @@ jobs:
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: playwright-report

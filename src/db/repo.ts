@@ -108,3 +108,29 @@ export function listSavedMixes(userId: string): { mix: DailyMix; savedAt: string
     .all(userId) as { payload_json: string; saved_at: string }[];
   return rows.map((r) => ({ mix: JSON.parse(r.payload_json) as DailyMix, savedAt: r.saved_at }));
 }
+
+// Shared mixes — public links that let a mix be opened without a session.
+
+/** The existing share token for a mix, if it's already been shared. */
+export function findShareToken(mixId: string): string | null {
+  const row = getDb().prepare('SELECT token FROM mix_shares WHERE mix_id = ?').get(mixId) as { token: string } | undefined;
+  return row?.token ?? null;
+}
+
+/** Creates a share token for a mix. A no-op if that mix already has one. */
+export function createShareToken(token: string, mixId: string, createdAt: string): void {
+  getDb()
+    .prepare('INSERT OR IGNORE INTO mix_shares (token, mix_id, created_at) VALUES (?, ?, ?)')
+    .run(token, mixId, createdAt);
+}
+
+export function findMixByShareToken(token: string): DailyMix | null {
+  const row = getDb()
+    .prepare(
+      `SELECT m.payload_json FROM mix_shares s
+       JOIN daily_mixes m ON m.id = s.mix_id
+       WHERE s.token = ?`,
+    )
+    .get(token) as { payload_json: string } | undefined;
+  return row ? (JSON.parse(row.payload_json) as DailyMix) : null;
+}

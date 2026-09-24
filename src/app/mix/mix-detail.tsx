@@ -1,0 +1,89 @@
+'use client';
+
+import { weekday } from '@/lib/clock';
+import { coverGradient } from '@/lib/covers';
+import { formatDuration, mixStory, mixTitle, reasonChip } from '@/lib/mix-copy';
+import type { DailyMix } from '@/lib/types';
+import { Cover, CoverFan } from '../cover';
+import { PlayIcon } from '../icons';
+import { usePlayer } from '../player/player-provider';
+
+/** The mix header, "why" panel and track list, shared by the owner's mix page and the public share page. */
+export function MixDetail({ mix, actions }: { mix: DailyMix; actions?: React.ReactNode }) {
+  const { state: player, dispatch } = usePlayer();
+  const tracks = mix.items.map((i) => i.track);
+  const minutes = Math.round(tracks.reduce((sum, t) => sum + t.durationMs, 0) / 60000);
+  const story = mixStory(mix);
+  const current = player.queue[player.index]?.id;
+
+  return (
+    <section className="flex min-h-full flex-col">
+      <header className="px-5 pb-6 pt-6 text-center" style={{ background: coverGradient(tracks[0].artworkHue) }}>
+        <CoverFan trackIds={tracks.map((t) => t.id)} size="lg" />
+        <p className="eyebrow mt-6">Daily Mix · {weekday(mix.mixDate)}</p>
+        <h1 className="mt-1 text-4xl font-extrabold tracking-tight">{mixTitle(mix.computedFrom.signals, mix.mixDate)}</h1>
+        <p className="mt-2 text-sm text-white/60">
+          {tracks.length} songs · {minutes} min · refreshes at midnight
+        </p>
+      </header>
+
+      <div className="flex-1 px-5">
+        <div className="mt-5 rounded-3xl bg-white/[0.06] p-5">
+          <h2 className="text-base font-bold">Why we built this for you</h2>
+          <p className="mt-2 text-sm leading-relaxed text-white/80">{story.narrative}</p>
+          <ul className="mt-3 flex flex-wrap gap-2">
+            {story.chips.map((chip) => (
+              <li key={chip} className="rounded-full bg-accent/15 px-3 py-1 text-xs font-semibold text-accent-soft">
+                {chip}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-3 text-xs text-white/50">{story.basis}</p>
+        </div>
+
+        <ol className="mt-4 grid gap-1">
+          {mix.items.map((item, index) => (
+            <li key={item.track.id} data-testid="mix-item">
+              <button
+                type="button"
+                onClick={() => dispatch({ type: 'load', queue: tracks, index })}
+                className="press flex w-full items-start gap-3 rounded-2xl py-3 text-left"
+              >
+                <Cover trackId={item.track.id} className="w-14 rounded-lg" />
+                <span className="min-w-0 flex-1">
+                  <span
+                    className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-bold tracking-wider ${
+                      item.reason.kind === 'discovery' ? 'bg-sky-400/15 text-sky-300' : 'bg-accent/15 text-accent-soft'
+                    }`}
+                  >
+                    {reasonChip(item)}
+                  </span>
+                  <span data-testid="track-title" className={`mt-1 block truncate font-semibold ${current === item.track.id ? 'text-accent' : ''}`}>
+                    {item.track.title}
+                  </span>
+                  <span className="block truncate text-sm text-white/60">{item.track.artist}</span>
+                  <span data-testid="reason" className="mt-1 block text-[13px] leading-snug text-white/60">
+                    {item.reason.text}
+                  </span>
+                </span>
+                <span className="pt-6 text-xs tabular-nums text-white/50">{formatDuration(item.track.durationMs)}</span>
+              </button>
+            </li>
+          ))}
+        </ol>
+      </div>
+
+      <div className="sticky bottom-0 flex gap-3 bg-gradient-to-t from-ink via-ink/95 to-transparent px-5 pb-3 pt-6">
+        <button
+          type="button"
+          onClick={() => dispatch({ type: 'load', queue: tracks, index: 0 })}
+          className="press flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-accent font-bold text-black"
+        >
+          <PlayIcon className="h-5 w-5" />
+          Play
+        </button>
+        {actions}
+      </div>
+    </section>
+  );
+}

@@ -40,6 +40,13 @@ CREATE TABLE IF NOT EXISTS saved_mixes (
   saved_at TEXT NOT NULL,
   PRIMARY KEY (user_id, mix_id)
 );
+CREATE TABLE IF NOT EXISTS mix_shares (
+  token TEXT PRIMARY KEY,
+  mix_id TEXT NOT NULL UNIQUE REFERENCES daily_mixes(id),
+  owner_id TEXT NOT NULL REFERENCES users(id),
+  created_at TEXT NOT NULL,
+  revoked_at TEXT
+);
 `;
 
 let db: Database.Database | null = null;

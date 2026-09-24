@@ -3,8 +3,12 @@
 A small Spotify-style demo app used in ArkusNexus training material. Not affiliated with Spotify.
 
 Each listener gets one Daily Mix per day: three tracks picked from their recent listening, each
-with a short reason ("Because you've finished it 9 times during late-night listens"). Listeners can
-play (simulated, no audio) and save mixes.
+with a short reason ("Because you've finished it 9 times during late-night listens"). The home screen
+also shows recently played tracks; listeners can play (simulated, no audio) and save mixes.
+
+The UI is mobile-first. On screens wider than 480px it is presented inside a phone frame; on a phone
+it fills the screen. All artists, tracks and cover art are fictional; covers are pre-rendered images
+in `public/covers/`.
 
 ## Run it
 

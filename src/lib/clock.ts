@@ -41,3 +41,21 @@ export function formatLongDate(date: string): string {
     timeZone: 'UTC',
   });
 }
+
+function localPart(instant: Date, options: Intl.DateTimeFormatOptions): string {
+  return new Intl.DateTimeFormat('en-US', { timeZone: APP_TIME_ZONE, ...options }).format(instant);
+}
+
+/** Hour of day (0–23) in the app time zone. */
+export function localHour(instant: Date): number {
+  return Number(localPart(instant, { hour: 'numeric', hourCycle: 'h23' }));
+}
+
+/** Clock-face time in the app time zone, e.g. "9:41". */
+export function localTime(instant: Date): string {
+  return localPart(instant, { hour: 'numeric', minute: '2-digit', hour12: true }).replace(/\s?[AP]M$/, '');
+}
+
+export function weekday(date: string): string {
+  return new Date(`${date}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' });
+}

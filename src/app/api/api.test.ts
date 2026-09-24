@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { NextRequest } from 'next/server';
+import { findMixByShareToken } from '@/db/repo';
 import { GET as getMe } from './me/route';
 import { DELETE as unsave, POST as save } from './mix/[id]/save/route';
+import { POST as share } from './mix/[id]/share/route';
 import { GET as getToday } from './mix/today/route';
 
 const req = (path: string, userId?: string, method = 'GET') =>
@@ -54,6 +56,33 @@ describe('POST/DELETE /api/mix/:id/save', () => {
 
   it('returns 404 for an unknown mix', async () => {
     expect((await save(req('/api/mix/nope/save', 'u_ben', 'POST'), params('nope'))).status).toBe(404);
+  });
+});
+
+describe('POST /api/mix/:id/share', () => {
+  it('requires a session', async () => {
+    const { id } = await (await getToday(req('/api/mix/today', 'u_ben'))).json();
+    expect((await share(req(`/api/mix/${id}/share`, undefined, 'POST'), params(id))).status).toBe(401);
+  });
+
+  it("does not let one user share another user's mix", async () => {
+    const { id } = await (await getToday(req('/api/mix/today', 'u_ben'))).json();
+    expect((await share(req(`/api/mix/${id}/share`, 'u_dev', 'POST'), params(id))).status).toBe(404);
+  });
+
+  it('returns 404 for an unknown mix', async () => {
+    expect((await share(req('/api/mix/nope/share', 'u_ben', 'POST'), params('nope'))).status).toBe(404);
+  });
+
+  it('creates a token that resolves to the mix, and is stable across calls', async () => {
+    const { id } = await (await getToday(req('/api/mix/today', 'u_chloe'))).json();
+
+    const first = await (await share(req(`/api/mix/${id}/share`, 'u_chloe', 'POST'), params(id))).json();
+    const second = await (await share(req(`/api/mix/${id}/share`, 'u_chloe', 'POST'), params(id))).json();
+    expect(first.token).toBe(second.token);
+
+    const shared = findMixByShareToken(first.token);
+    expect(shared?.id).toBe(id);
   });
 });
 

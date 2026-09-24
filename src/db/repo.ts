@@ -86,6 +86,34 @@ export function unsaveMix(userId: string, mixId: string): void {
   getDb().prepare('DELETE FROM saved_mixes WHERE user_id = ? AND mix_id = ?').run(userId, mixId);
 }
 
+// Shared mixes (public, no-account links)
+
+/** The share token for a mix, if one has already been created. */
+export function findShareToken(mixId: string): string | null {
+  const row = getDb().prepare('SELECT token FROM mix_shares WHERE mix_id = ?').get(mixId) as
+    | { token: string }
+    | undefined;
+  return row?.token ?? null;
+}
+
+/** Inserts a share token for the mix unless one already exists. */
+export function createShareToken(token: string, mixId: string, createdAt: string): void {
+  getDb()
+    .prepare('INSERT OR IGNORE INTO mix_shares (token, mix_id, created_at) VALUES (?, ?, ?)')
+    .run(token, mixId, createdAt);
+}
+
+export function findMixByShareToken(token: string): DailyMix | null {
+  const row = getDb()
+    .prepare(
+      `SELECT m.payload_json FROM mix_shares s
+       JOIN daily_mixes m ON m.id = s.mix_id
+       WHERE s.token = ?`,
+    )
+    .get(token) as { payload_json: string } | undefined;
+  return row ? (JSON.parse(row.payload_json) as DailyMix) : null;
+}
+
 export function listSavedMixes(userId: string): { mix: DailyMix; savedAt: string }[] {
   const rows = getDb()
     .prepare(

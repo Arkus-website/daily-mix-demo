@@ -3,25 +3,16 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { formatLongDate } from '@/lib/clock';
-import type { DailyMix, PlayContext } from '@/lib/types';
-import { Artwork } from '../artwork';
+import type { DailyMix } from '@/lib/types';
+import { MixCard } from './mix-card';
 
 type MixResponse = DailyMix & { saved: boolean };
-
-const CONTEXT_NAME: Record<PlayContext, string> = {
-  late_night: 'late-night',
-  commute: 'commute',
-  workout: 'workout',
-  focus: 'focus',
-  other: 'everyday',
-};
-
-const pct = (n: number) => `${Math.round(n * 100)}%`;
 
 export function MixView() {
   const router = useRouter();
   const [mix, setMix] = useState<MixResponse | null>(null);
-  const [playing, setPlaying] = useState<string | null>(null);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     fetch('/api/mix/today').then(async (res) => {
@@ -41,7 +32,24 @@ export function MixView() {
     }
   }
 
-  const { signals, windowDays, playIds } = mix.computedFrom;
+  async function share() {
+    if (!mix) return;
+    const res = await fetch(`/api/mix/${mix.id}/share`, { method: 'POST' });
+    if (!res.ok) return;
+    const { token } = (await res.json()) as { token: string };
+    setShareUrl(`${window.location.origin}/share/${token}`);
+    setCopied(false);
+  }
+
+  async function copyShareUrl() {
+    if (!shareUrl) return;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+    } catch {
+      // Clipboard access can fail (e.g. insecure context); the link is still shown for manual copying.
+    }
+  }
 
   return (
     <section>
@@ -50,56 +58,43 @@ export function MixView() {
           <p className="text-sm text-emerald-300">Daily Mix</p>
           <h1 className="text-2xl font-bold">{formatLongDate(mix.mixDate)}</h1>
         </div>
-        <button
-          onClick={toggleSave}
-          className={`rounded-full px-5 py-2 text-sm font-semibold ${
-            mix.saved ? 'bg-zinc-800 text-emerald-300' : 'bg-emerald-400 text-black hover:bg-emerald-300'
-          }`}
-        >
-          {mix.saved ? 'Saved' : 'Save'}
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={share}
+            className="rounded-full border border-white/20 px-5 py-2 text-sm font-semibold hover:border-white/50"
+          >
+            Share
+          </button>
+          <button
+            onClick={toggleSave}
+            className={`rounded-full px-5 py-2 text-sm font-semibold ${
+              mix.saved ? 'bg-zinc-800 text-emerald-300' : 'bg-emerald-400 text-black hover:bg-emerald-300'
+            }`}
+          >
+            {mix.saved ? 'Saved' : 'Save'}
+          </button>
+        </div>
       </div>
 
-      <ol className="grid gap-3">
-        {mix.items.map((item) => (
-          <li key={item.track.id} data-testid="mix-item" className="flex items-center gap-4 rounded-xl bg-zinc-900 p-4">
-            <Artwork hue={item.track.artworkHue} />
-            <div className="min-w-0 flex-1">
-              <p className="font-medium">{item.track.title}</p>
-              <p className="text-sm text-zinc-400">
-                {item.track.artist} · {item.track.album}
-              </p>
-              <p data-testid="reason" className="mt-1 text-sm text-emerald-200/80">
-                {item.reason.text}
-              </p>
-            </div>
-            <button
-              onClick={() => setPlaying(playing === item.track.id ? null : item.track.id)}
-              className="rounded-full border border-white/20 px-4 py-1.5 text-sm hover:border-white/50"
-            >
-              {playing === item.track.id ? 'Pause' : 'Play'}
-            </button>
-          </li>
-        ))}
-      </ol>
-
-      {playing && (
-        <p className="mt-4 text-sm text-zinc-400">
-          Now playing: {mix.items.find((i) => i.track.id === playing)?.track.title}
-        </p>
+      {shareUrl && (
+        <div className="mb-6 flex items-center gap-2 rounded-xl bg-zinc-900 p-3">
+          <input
+            readOnly
+            value={shareUrl}
+            data-testid="share-url"
+            onFocus={(e) => e.currentTarget.select()}
+            className="min-w-0 flex-1 truncate bg-transparent text-sm text-zinc-300 outline-none"
+          />
+          <button
+            onClick={copyShareUrl}
+            className="shrink-0 rounded-full border border-white/20 px-4 py-1.5 text-sm hover:border-white/50"
+          >
+            {copied ? 'Copied!' : 'Copy'}
+          </button>
+        </div>
       )}
 
-      <details className="mt-8 text-sm text-zinc-400">
-        <summary className="cursor-pointer text-zinc-300">Why these three?</summary>
-        <p className="mt-2">
-          Based on {playIds.length} plays over {windowDays} days. {pct(signals.lateNightRatio)} late-night. You finish{' '}
-          {pct(signals.completionRate)} of what you start.
-        </p>
-        <p className="mt-1">
-          You listen most during{' '}
-          {signals.topContexts.map((c) => `${CONTEXT_NAME[c.context]} (${pct(c.ratio)})`).join(', ')}.
-        </p>
-      </details>
+      <MixCard mix={mix} />
     </section>
   );
 }

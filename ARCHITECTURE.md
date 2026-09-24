@@ -21,6 +21,11 @@ browser ── pages (src/app/*)          ─┐
 4. **Save** calls `POST` / `DELETE /api/mix/:id/save`. Only the owner of a mix can save it; any
    other mix id returns 404.
 5. **Saved (`/saved`)** is a server component listing the user's saved mixes, newest first.
+6. **Share** calls `POST /api/mix/:id/share`, same ownership check as save. It returns a `token`
+   (created once per mix, then reused) that resolves at the public, unauthenticated
+   `/share/:token` page. That page looks the mix up with `findMixByShareToken()` — no session
+   required — and renders it with the same `MixCard` used by `/mix`, minus the Save/Share
+   controls. An unknown token renders a "link not found" message instead of the mix.
 
 ## Where the recommender runs
 

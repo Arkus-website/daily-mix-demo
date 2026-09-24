@@ -10,6 +10,12 @@ The UI is mobile-first. On screens wider than 480px it is presented inside a pho
 it fills the screen. All artists, tracks and cover art are fictional; covers are pre-rendered images
 in `public/covers/`.
 
+A listener can also share today's mix with a friend through a link; the friend needs no account to
+open it. The shared page carries no explanation of why those tracks were picked — no reasons, no
+"why we built this for you" panel — because every reason is derived from the owner's private
+listening history. It shows only the date, the owner's first name, and the three tracks. See
+"Sharing a mix" in [ARCHITECTURE.md](ARCHITECTURE.md) for the boundary this enforces.
+
 ## Run it
 
 Requires Node 22 (see `.nvmrc`).

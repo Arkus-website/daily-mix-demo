@@ -22,6 +22,9 @@ browser ── pages (src/app/*)          ─┐
    other mix id returns 404.
 5. **Saved (`/saved`)** is a server component listing the user's saved mixes, newest first.
    `/search` and `/library` are placeholders reached from the tab bar.
+6. **Share** calls `POST` / `DELETE /api/mix/:id/share`, mirroring the save endpoint's owner-only,
+   401/404 behaviour. A friend opens the resulting `/share/<token>` link with no session at all. See
+   "Sharing a mix" below for the boundary this crosses.
 
 ## UI shell and player
 
@@ -73,3 +76,28 @@ make it possible to see why the recommender chose what it did when debugging.
   "Why we built this for you" panel and the mix title.
 - `/` reads `mixDate`, the tracks and the top context. `/saved` reads `mixDate`, the tracks and the
   top context (for the title).
+
+## Sharing a mix
+
+A listener can share today's mix with a friend who has no account. This is the one place a
+`DailyMix` crosses from a signed-in, owner-only surface to a public one, so the boundary is
+enforced by an explicit allowlist rather than by trusting call sites to leave fields out.
+
+- `src/lib/public-mix.ts` (`toPublicMix(mix, owner)`) builds the only shape allowed to cross that
+  boundary: `mixDate`, the owner's first name, and each track's `title`, `artist`, `album` and
+  `artworkHue`. Nothing else — no `reason`, no `computedFrom`, no ids, no email or plan. It is the
+  one function allowed to read a `DailyMix` on the public path.
+- `mix_shares` (`token` PK, `mix_id` unique, `owner_id`, `created_at`, `revoked_at`) maps a random,
+  128-bit token to a mix. `POST /api/mix/:id/share` creates or returns the owner's token;
+  `DELETE /api/mix/:id/share` revokes it. Both require the caller to own the mix, exactly like the
+  save endpoint.
+- `GET /share/:token` resolves the token to a mix (`findMixByShareToken`, which returns nothing for
+  an unknown or revoked token) and renders `SharedMixView` with the narrow, public type only —
+  never the internal `MixView`, which takes a full `DailyMix` and would render the reasons and the
+  "why" panel. Passing a `DailyMix` into `SharedMixView` is a type error by design.
+- The public page carries no explanation text: no reasons, no "why" panel, no neutral summary
+  line either. Just the date, the owner's first name, and the three tracks. `layout.tsx` lets the
+  mini player and now-playing sheet render without a session so a guest can press Play; the tab
+  bar stays gated to signed-in listeners.
+- Not in scope: link expiry, rate limiting on the public route, and view counts. Each would need
+  its own plan.

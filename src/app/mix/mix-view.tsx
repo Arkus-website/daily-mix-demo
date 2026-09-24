@@ -7,7 +7,7 @@ import { coverGradient } from '@/lib/covers';
 import { formatDuration, mixStory, mixTitle, reasonChip } from '@/lib/mix-copy';
 import type { DailyMix } from '@/lib/types';
 import { Cover, CoverFan } from '../cover';
-import { HeartIcon, PlayIcon } from '../icons';
+import { HeartIcon, PlayIcon, ShareIcon } from '../icons';
 import { usePlayer } from '../player/player-provider';
 
 type MixResponse = DailyMix & { saved: boolean };
@@ -16,6 +16,8 @@ export function MixView() {
   const router = useRouter();
   const { state: player, dispatch } = usePlayer();
   const [mix, setMix] = useState<MixResponse | null>(null);
+  const [shareLink, setShareLink] = useState<string | null>(null);
+  const [justCopied, setJustCopied] = useState(false);
 
   useEffect(() => {
     fetch('/api/mix/today').then(async (res) => {
@@ -33,6 +35,37 @@ export function MixView() {
       const { saved } = (await res.json()) as { saved: boolean };
       setMix({ ...mix, saved });
     }
+  }
+
+  async function share() {
+    if (!mix) return;
+    const res = await fetch(`/api/mix/${mix.id}/share`, { method: 'POST' });
+    if (!res.ok) return;
+    const { token } = (await res.json()) as { token: string };
+    const link = `${window.location.origin}/share/${token}`;
+    setShareLink(link);
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: 'My Daily Mix', url: link });
+        return;
+      } catch {
+        // Cancelled, or unsupported despite the feature check; the link stays visible below either way.
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(link);
+      setJustCopied(true);
+      setTimeout(() => setJustCopied(false), 2000);
+    } catch {
+      // Clipboard access denied; the link is still shown for the listener to copy by hand.
+    }
+  }
+
+  async function stopSharing() {
+    if (!mix) return;
+    await fetch(`/api/mix/${mix.id}/share`, { method: 'DELETE' });
+    setShareLink(null);
   }
 
   const tracks = mix.items.map((i) => i.track);
@@ -97,6 +130,17 @@ export function MixView() {
         </ol>
       </div>
 
+      {shareLink && (
+        <div className="mx-5 mb-2 flex items-center justify-between gap-3 rounded-2xl bg-white/[0.06] px-4 py-3">
+          <span data-testid="share-link" className="min-w-0 flex-1 truncate text-xs text-white/70">
+            {shareLink}
+          </span>
+          <button type="button" onClick={stopSharing} className="press shrink-0 text-xs font-semibold text-white/60">
+            Stop sharing
+          </button>
+        </div>
+      )}
+
       <div className="sticky bottom-0 flex gap-3 bg-gradient-to-t from-ink via-ink/95 to-transparent px-5 pb-3 pt-6">
         <button
           type="button"
@@ -116,6 +160,14 @@ export function MixView() {
         >
           <HeartIcon filled={mix.saved} className="h-5 w-5" />
           {mix.saved ? 'Saved' : 'Save'}
+        </button>
+        <button
+          type="button"
+          onClick={share}
+          aria-label="Share"
+          className="press flex h-12 min-w-12 items-center justify-center gap-2 rounded-full border border-white/25 px-3"
+        >
+          {justCopied ? <span className="whitespace-nowrap text-[11px] font-semibold">Link copied</span> : <ShareIcon className="h-5 w-5" />}
         </button>
       </div>
     </section>

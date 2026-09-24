@@ -14,13 +14,26 @@ browser ── pages (src/app/*)          ─┐
 1. **Auth.** `/login` sets an httpOnly cookie `dm_session=<userId>`. `getCurrentUser()` in
    `src/lib/auth.ts` resolves it to a user. Route handlers return 401 without a valid session;
    pages call `requireUser()` (`src/lib/session.ts`), which redirects to `/login`.
-2. **Home (`/`)** is a server component. It calls `getTodaysMix(user)` and renders the date and
-   the three artwork blocks.
+2. **Home (`/`)** is a server component. It calls `getTodaysMix(user)` for the Daily Mix card and
+   `listRecentTracks()` for the "Recently played" grid.
 3. **Mix (`/mix`)** is a client component. It fetches `GET /api/mix/today` and renders the tracks,
-   their reasons, the Play/Save buttons and the "Why these three?" panel.
+   their reasons, the Play/Save buttons and the "Why we built this for you" panel.
 4. **Save** calls `POST` / `DELETE /api/mix/:id/save`. Only the owner of a mix can save it; any
    other mix id returns 404.
 5. **Saved (`/saved`)** is a server component listing the user's saved mixes, newest first.
+   `/search` and `/library` are placeholders reached from the tab bar.
+
+## UI shell and player
+
+- `src/app/shell/`: `PhoneFrame` (the device frame shown above 480px, with a status bar and home
+  indicator) and the bottom `TabBar`. Presentation only; routes and data don't depend on it.
+- `src/app/player/`: a simulated player. `PlayerProvider` in the root layout holds the state from
+  `src/lib/player.ts` (a reducer: queue, position, play/pause, next/previous) and advances the
+  position on a timer, so playback continues across pages. `MiniPlayer` docks above the tab bar;
+  `NowPlaying` slides up over it. There is no audio.
+- Covers: `coverUrl(trackId)` in `src/lib/covers.ts` maps a track to `public/covers/<id>.webp`.
+- Display copy (mix title, subtitle, the "why" narrative and chips) is derived from a `DailyMix` in
+  `src/lib/mix-copy.ts`. It is computed where it's shown and never stored.
 
 ## Where the recommender runs
 
@@ -56,5 +69,7 @@ make it possible to see why the recommender chose what it did when debugging.
 ## Who consumes it today
 
 - `GET /api/mix/today` returns the whole object (plus a `saved` flag for the current user).
-- `/mix` renders `items` and turns `computedFrom.signals` into the "Why these three?" text.
-- `/` reads `mixDate` and the tracks' artwork. `/saved` reads `mixDate` and the track titles.
+- `/mix` renders `items` and turns `computedFrom.signals` and the reason kinds into the
+  "Why we built this for you" panel and the mix title.
+- `/` reads `mixDate`, the tracks and the top context. `/saved` reads `mixDate`, the tracks and the
+  top context (for the title).

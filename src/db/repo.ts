@@ -45,6 +45,18 @@ export function listPlays(userId: string): Play[] {
   return rows.map(toPlay);
 }
 
+/** The user's most recently played distinct tracks, newest first. */
+export function listRecentTracks(userId: string, limit: number): Track[] {
+  const rows = getDb()
+    .prepare(
+      `SELECT t.* FROM tracks t
+       JOIN (SELECT track_id, MAX(played_at) AS last FROM plays WHERE user_id = ? GROUP BY track_id) p ON p.track_id = t.id
+       ORDER BY p.last DESC, t.id LIMIT ?`,
+    )
+    .all(userId, limit) as TrackRow[];
+  return rows.map(toTrack);
+}
+
 // Daily mixes
 
 export function findMixForDate(userId: string, mixDate: string): DailyMix | null {

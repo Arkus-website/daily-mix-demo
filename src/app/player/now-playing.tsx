@@ -1,6 +1,6 @@
 'use client';
 
-import { coverGradient, coverUrl } from '@/lib/covers';
+import { coverGradient, coverUrl, hasCover } from '@/lib/covers';
 import { formatDuration } from '@/lib/mix-copy';
 import { ChevronDownIcon, NextIcon, PauseIcon, PlayIcon, PreviousIcon, RepeatIcon, ShuffleIcon } from '../icons';
 import { Cover } from '../cover';
@@ -25,11 +25,13 @@ export function NowPlaying() {
     >
       {track && (
         <>
-          <div
-            aria-hidden
-            className="absolute inset-0 scale-125 bg-cover bg-center opacity-40 blur-3xl"
-            style={{ backgroundImage: `url(${coverUrl(track.id)})` }}
-          />
+          {hasCover(track.id) && (
+            <div
+              aria-hidden
+              className="absolute inset-0 scale-125 bg-cover bg-center opacity-40 blur-3xl"
+              style={{ backgroundImage: `url(${coverUrl(track.id)})` }}
+            />
+          )}
           <div className="relative flex flex-1 flex-col px-6 pb-8 pt-4 device:pt-14">
             <div className="flex items-center justify-between">
               <button
@@ -44,7 +46,7 @@ export function NowPlaying() {
               <span className="w-11" />
             </div>
 
-            <Cover trackId={track.id} className="mx-auto mt-8 w-full max-w-[320px] rounded-2xl shadow-2xl" />
+            <Cover trackId={track.id} hue={track.artworkHue} className="mx-auto mt-8 w-full max-w-[320px] rounded-2xl shadow-2xl" />
 
             <div className="mt-8">
               <h2 data-testid="now-playing-title" className="text-2xl font-bold">

@@ -1,7 +1,17 @@
 import Image from 'next/image';
-import { coverUrl } from '@/lib/covers';
+import { coverGradient, coverUrl, hasCover } from '@/lib/covers';
 
-export function Cover({ trackId, className = '' }: { trackId: string; className?: string }) {
+/** A track's cover art. Guest tracks (no catalogue id) render the same hue block the shared page uses. */
+export function Cover({ trackId, hue, className = '' }: { trackId: string; hue?: number; className?: string }) {
+  if (!hasCover(trackId)) {
+    return (
+      <span
+        aria-hidden
+        className={`block aspect-square shrink-0 shadow-lg shadow-black/40 ${className}`}
+        style={{ background: coverGradient(hue ?? 0) }}
+      />
+    );
+  }
   return (
     <Image
       src={coverUrl(trackId)}

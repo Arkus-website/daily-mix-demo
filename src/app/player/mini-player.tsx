@@ -19,7 +19,7 @@ export function MiniPlayer() {
           aria-label={`Open now playing: ${track.title}`}
           className="press flex min-w-0 flex-1 items-center gap-3 text-left"
         >
-          <Cover trackId={track.id} className="w-10 rounded-md" />
+          <Cover trackId={track.id} hue={track.artworkHue} className="w-10 rounded-md" />
           <span className="min-w-0">
             <span className="block truncate text-sm font-semibold">{track.title}</span>
             <span className="block truncate text-xs text-white/60">{track.artist}</span>

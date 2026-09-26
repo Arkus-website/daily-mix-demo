@@ -1,7 +1,7 @@
 'use client';
 
 import { weekday } from '@/lib/clock';
-import { coverGradient } from '@/lib/covers';
+import { GUEST_TRACK_PREFIX, coverGradient } from '@/lib/covers';
 import type { PublicMix } from '@/lib/public-mix';
 import { PlayIcon } from '../../icons';
 import { usePlayer } from '../../player/player-provider';
@@ -15,7 +15,7 @@ export function SharedMixView({ mix }: { mix: PublicMix }) {
   const { state: player, dispatch } = usePlayer();
 
   const queue = mix.tracks.map((track, index) => ({
-    id: `shared-${mix.mixDate}-${index}`,
+    id: `${GUEST_TRACK_PREFIX}${mix.mixDate}-${index}`,
     title: track.title,
     artist: track.artist,
     album: track.album,

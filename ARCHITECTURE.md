@@ -22,6 +22,14 @@ browser ── pages (src/app/*)          ─┐
    other mix id returns 404.
 5. **Saved (`/saved`)** is a server component listing the user's saved mixes, newest first.
    `/search` and `/library` are placeholders reached from the tab bar.
+6. **Share.** `POST /api/mix/:id/share` (owner only, same 404-for-others rule as save) returns a
+   share token, creating one on first request and reusing it after. `/share/:token` is a public
+   server component — no session required — that resolves the token straight from the DB and
+   renders the mix read-only. `MixDetail` (`src/app/mix/mix-detail.tsx`) holds the header, "why"
+   panel and track list shared by `/mix` and `/share/:token`; each page supplies its own footer
+   actions (Save + Share for the owner, nothing extra for a guest). The root layout only shows the
+   tab bar to a signed-in `user`; the mini player and now-playing sheet render either way so a
+   guest tapping Play still sees it.
 
 ## UI shell and player
 

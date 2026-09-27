@@ -19,13 +19,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <PlayerProvider>
           <PhoneFrame>
             <main className="no-scrollbar relative flex-1 overflow-y-auto overscroll-contain">{children}</main>
-            {user && (
-              <>
-                <MiniPlayer />
-                <TabBar />
-                <NowPlaying />
-              </>
-            )}
+            <MiniPlayer />
+            {user && <TabBar />}
+            <NowPlaying />
           </PhoneFrame>
         </PlayerProvider>
       </body>

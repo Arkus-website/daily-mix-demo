@@ -1,8 +1,10 @@
 name: key-check
 # Manual: confirms the ANTHROPIC_API_KEY secret reaches Actions and is accepted by the API.
-# gh workflow run key-check.yml --ref <branch>
+# gh workflow run key-check.yml (once the file is on main), or push a change to this file.
 on:
   workflow_dispatch:
+  push:
+    paths: [".github/workflows/key-check.yml"]
 jobs:
   key-check:
     runs-on: ubuntu-latest

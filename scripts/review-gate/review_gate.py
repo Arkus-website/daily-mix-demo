@@ -80,21 +80,43 @@ if backend == "api" and not os.environ.get("ANTHROPIC_API_KEY"):
     upsert_comment(pr, MARKER, body); summary(body); sys.exit(1)
 save_output(f"pr{pr}-input.txt", user)
 
+FINDING = {"type": "object", "additionalProperties": False,
+           "required": ["file", "line", "label", "note"],
+           "properties": {"file": {"type": "string"}, "line": {"type": "integer"},
+                          "label": {"type": "string", "enum": ["OBSERVED", "DOCUMENTED", "ASSUMED"]},
+                          "note": {"type": "string"}}}
+CHECK = {"type": "object", "additionalProperties": False,
+         "required": ["id", "name", "verdict", "findings", "summary"],
+         "properties": {"id": {"type": "integer"}, "name": {"type": "string"},
+                        "verdict": {"type": "string", "enum": ["PASS", "FAIL", "UNKNOWN"]},
+                        "findings": {"type": "array", "items": FINDING},
+                        "summary": {"type": "string"}}}
+SCHEMA = {"type": "object", "additionalProperties": False,
+          "required": ["checks", "missing_evidence"],
+          "properties": {"checks": {"type": "array", "items": CHECK},
+                         "missing_evidence": {"type": "array", "items": {"type": "string"}}}}
+
 def ask(system: str, user: str) -> str:
     if backend == "cli":
         out = sh("claude", "-p", "--model", model, "--system-prompt", system,
                  "--output-format", "json", "--tools", "", "--no-session-persistence", input=user)
         return json.loads(out)["result"]
     import anthropic
-    # Sonnet 5 thinks adaptively by default and the thinking counts against max_tokens,
-    # so a small ceiling returns no text at all. 16000 is the non-streaming default.
-    resp = anthropic.Anthropic().messages.create(
-        model=model, max_tokens=16000,
-        system=system, messages=[{"role": "user", "content": user}])
-    save_output(f"pr{pr}-response-meta.txt",
-                f"stop_reason={resp.stop_reason} blocks={[b.type for b in resp.content]} usage={resp.usage}\n")
+    # Structured output guarantees the text block is JSON matching SCHEMA. The model thinks
+    # adaptively by default and thinking counts against max_tokens, so stream with a large
+    # ceiling and medium effort: a review of an 80 KB diff needs room, not depth.
+    with anthropic.Anthropic().messages.stream(
+        model=model, max_tokens=32000,
+        output_config={"effort": "medium", "format": {"type": "json_schema", "schema": SCHEMA}},
+        system=system, messages=[{"role": "user", "content": user}],
+    ) as stream:
+        resp = stream.get_final_message()
+    meta = f"stop_reason={resp.stop_reason} blocks={[b.type for b in resp.content]} usage={resp.usage}"
+    print("review agent:", meta); save_output(f"pr{pr}-response-meta.txt", meta + "\n")
     if resp.stop_reason == "max_tokens":
         raise SystemExit(f"review agent hit max_tokens ({resp.usage.output_tokens} output tokens) before finishing")
+    if resp.stop_reason == "refusal":
+        raise SystemExit(f"review agent refused ({getattr(resp, 'stop_details', None)})")
     return "".join(b.text for b in resp.content if b.type == "text")
 
 try:

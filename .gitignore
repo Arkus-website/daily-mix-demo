@@ -10,3 +10,7 @@ data/*.db-*
 
 test-results/
 playwright-report/
+
+# review-gate local outputs
+.gate-out/
+__pycache__/

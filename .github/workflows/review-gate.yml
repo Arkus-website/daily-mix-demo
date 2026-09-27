@@ -1,0 +1,72 @@
+name: review-gate
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+permissions:
+  contents: read
+  pull-requests: write
+jobs:
+  ci:
+    # CI executes what can be executed. Output is captured so the review agent
+    # reads the real thing, not a summary. Same steps as the `check` job in ci.yml,
+    # including Playwright, because the plan names it as evidence for its criteria.
+    runs-on: ubuntu-latest
+    env:
+      # Pin the app clock so the seed and the server agree on "today" regardless of when CI runs.
+      DM_NOW: '2026-09-23T19:00:00Z'
+    outputs:
+      result: ${{ steps.run.outputs.result }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - id: run
+        shell: bash
+        run: |
+          set +e
+          # Scripts from package.json, same order as ci.yml: typecheck, lint, test, seed, build, e2e.
+          # Playwright is included because the plan's acceptance criteria name it as evidence;
+          # without it the agent has to answer UNKNOWN on those criteria.
+          ( npm run typecheck && npm run lint && npm test && npm run db:seed && npm run build \
+            && npx playwright install --with-deps chromium && npm run test:e2e ) 2>&1 | tee ci-output.txt
+          code=${PIPESTATUS[0]}
+          echo "result=$([ $code -eq 0 ] && echo pass || echo fail)" >> "$GITHUB_OUTPUT"
+          echo "exit=$code" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v7
+        with: { name: ci-output, path: ci-output.txt }
+      - run: exit ${{ steps.run.outputs.exit }}
+
+  review:
+    # The agent assembles evidence. Runs even when CI fails: a red CI is evidence too.
+    needs: ci
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with: { fetch-depth: 0 }
+      - uses: actions/download-artifact@v8
+        # If the ci job died before it could upload (npm ci failed), the gate still runs
+        # and reports NO CI OUTPUT CAPTURED, which is an UNKNOWN, never a Green.
+        continue-on-error: true
+        with: { name: ci-output, path: ci-output }
+      - uses: actions/setup-python@v7
+        with: { python-version: "3.12" }
+      - run: pip install anthropic
+      - name: Five checks against the approved plan
+        working-directory: scripts/review-gate
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          REVIEW_MODEL: claude-sonnet-5
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          CI_RESULT: ${{ needs.ci.outputs.result }}
+          CI_LOG: ${{ github.workspace }}/ci-output/ci-output.txt
+        run: python review_gate.py

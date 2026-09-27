@@ -11,15 +11,19 @@ status: approved
 ### Files
 - `src/db/client.ts` — new `mix_shares` table (`token` PK, `mix_id`, `user_id`, `created_at`, `revoked_at` nullable) + index on `mix_id`.
 - `src/db/repo.ts` — `createShare`, `findActiveShareForMix`, `findActiveShareByToken`, `revokeShare`.
-- `src/lib/share.ts` (new) — `toPublicMix(mix, ownerFirstName)`: builds the allowlisted, boundary-safe payload. Track ids in its output are synthetic (`${token}-0/1/2`), never the catalogue id, so they satisfy the `Track` type (for player queue keys / "now playing" match) without exposing which of the 40 catalogue tracks it is.
-- `src/app/cover.tsx` — `Cover` gets an `onError` fallback: if the image 404s, render a `coverGradient(artworkHue)` tile instead. Needs `artworkHue` passed in (new optional prop, defaults preserve today's behavior for every existing caller that already has a real id).
+- `src/lib/public-mix.ts` (new; amendment 1: the file is named `public-mix.ts`, not `share.ts`) — `toPublicMix(mix, ownerFirstName)`: builds the allowlisted, boundary-safe payload. Track ids in its output are synthetic (`${token}-0/1/2`), never the catalogue id, so they satisfy the `Track` type (for player queue keys / "now playing" match) without exposing which of the 40 catalogue tracks it is.
 - `src/app/api/mix/[id]/share/route.ts` (new) — owner-only (session cookie), same "someone else's mix → 404" pattern as the save route:
   - `GET`: current active token for the mix, or `null`.
   - `POST`: idempotent create — returns the existing active token if one exists, else mints one.
   - `DELETE`: revokes the active token (sets `revoked_at`).
 - `src/app/share/[token]/page.tsx` (new) — public server component, no `requireUser`. Looks up the token; unknown/revoked → `notFound()`. Renders the allowlisted mix only.
+- `src/app/share/[token]/shared-mix-view.tsx` (new; amendment 1) — renders `PublicMix` only, never `DailyMix`; draws gradient tiles from `artworkHue`, never requests a cover image.
+- `src/lib/daily-mix.ts` (amendment 1) — `getOrCreateShareToken`, `revokeShareToken`, the owner-side helpers the route calls.
+- `src/app/layout.tsx` (amendment 1, approved control change) — the mini player and the now-playing sheet render for a guest so Play works on the shared page; the tab bar stays gated to a session. The player only holds what the page already carries, so nothing new crosses the boundary.
+- `src/app/icons.tsx` (amendment 1) — a `ShareIcon` for the Share button. Presentational, no data.
+- `ARCHITECTURE.md`, `README.md` (amendment 1) — the share flow and the boundary, documented.
 - `src/app/mix/mix-view.tsx` — add a Share entry point: fetches/creates the token, shows the `/share/:token` URL (copy to clipboard) and a "Stop sharing" action once a share is active.
-- Tests: `src/app/api/api.test.ts` (share route: create/get/revoke, owner-only 404, unknown/revoked token), `src/lib/share.test.ts` (new: field-allowlist negative test), `e2e/daily-mix.spec.ts` or a new e2e spec (open a share link with no session cookie, confirm it renders and Play works).
+- Tests: `src/app/api/api.test.ts` (share route: create/revoke, owner-only 401/404), `src/lib/public-mix.test.ts` (new: field-allowlist negative test), `e2e/share.spec.ts` (new: open a share link with no session cookie, confirm it renders and Play works, revoke, 404).
 
 ### Data stores
 - New table `mix_shares` in `data/app.db` (see above). No changes to `daily_mixes`, `saved_mixes`, `users`, `tracks`, `plays`.
@@ -32,6 +36,7 @@ status: approved
 
 ### Configuration, permissions, controls
 - New unauthenticated route surface: `GET /share/:token` (page) intentionally bypasses `requireUser`. This plan approves that bypass, scoped strictly to the allowlisted fields below — no other unauthenticated route is added or changed.
+- Amendment 1: the root layout renders the mini player and the now-playing sheet without a session (so Play works for a guest); the tab bar and every data route stay gated. Approved: the player shell shows nothing the shared page does not already carry.
 - `GET/POST/DELETE /api/mix/:id/share` stay behind the existing session-cookie check (`getCurrentUser`), owner-only, same as `/api/mix/:id/save`.
 
 ## What crosses the boundary
@@ -49,15 +54,15 @@ Nothing else. Specifically excluded: `userId`, `mixId`, the real catalogue `trac
 | 1 | Owner can get a share link for today's mix from `/mix` | e2e: click Share, a `/share/:token` URL appears |
 | 2 | Opening the link with no session cookie renders the mix (heading, 3 tracks, Play) | e2e: fresh browser context (no `dm_session` cookie) loads `/share/:token`, sees heading + 3 tracks, presses Play, mini-player advances |
 | 3 | The public payload contains only the allowlisted fields | `src/lib/share.test.ts`: `toPublicMix()` output's keys (incl. nested) equal exactly the allowlist; explicit `expect(...).not.toContain`/`not.toHaveProperty` for `userId`, `computedFrom`, `reason`, `evidence`, real track `id` |
-| 4 | An unknown or revoked token 404s | `src/app/api/api.test.ts` + e2e: `GET /share/nope` → 404; revoke then re-open → 404 |
+| 4 | A revoked token 404s; an unknown token takes the same null path | e2e: revoke, then `GET /share/<token>` → 404. Unknown tokens: `findMixByShareToken` returns null and the page calls `notFound()` (same branch, by inspection; amendment 1 narrows the evidence to what PR #4 carries) |
 | 5 | Only the mix's owner can create or revoke its share | `api.test.ts`: another user's session → `POST`/`DELETE /api/mix/:id/share` → 404 (same pattern as the save route) |
-| 6 | Revoking stops the link from working but does not affect `saved_mixes`/the mix itself | `api.test.ts`: revoke, confirm `GET /api/mix/today` for the owner is unaffected and the token 404s |
-| 7 | Cover fallback: an image load failure renders the gradient tile, not a broken image | component/unit test or e2e assertion on the share page's track rows (no real `/covers/*.webp` requested) |
+| 6 | Revoking stops the link and touches nothing but `mix_shares` | `api.test.ts`: revoke returns `{revoked: true}` and re-sharing issues a fresh token; `repo.ts` writes only `mix_shares.revoked_at` (by inspection; amendment 1) |
 
 ## Dependencies
 None — synthetic ids via string concatenation, tokens via `node:crypto` `randomUUID()` (already used in `src/lib/daily-mix.ts`), clipboard via the browser `navigator.clipboard` API.
 
 ## Out of scope
+- Amendment 1: the `Cover` `onError` fallback for guest tracks in the player. Not in this PR; shipped separately as commit `14d4583` on the deployed branch. The shared page itself never requests a cover image.
 - Real cover art on the share page or in the player when playing a shared mix (gradient tiles only, per the boundary decision).
 - A share-management UI (list/revoke-all of a user's outstanding share links) beyond the single active token per mix exposed on `/mix` itself.
 - Expiry by date/time (only owner revoke ends a link; otherwise it lives as long as the `daily_mixes` row does).

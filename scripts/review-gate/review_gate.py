@@ -86,12 +86,22 @@ def ask(system: str, user: str) -> str:
                  "--output-format", "json", "--tools", "", "--no-session-persistence", input=user)
         return json.loads(out)["result"]
     import anthropic
+    # Sonnet 5 thinks adaptively by default and the thinking counts against max_tokens,
+    # so a small ceiling returns no text at all. 16000 is the non-streaming default.
     resp = anthropic.Anthropic().messages.create(
-        model=model, max_tokens=4000,
+        model=model, max_tokens=16000,
         system=system, messages=[{"role": "user", "content": user}])
+    save_output(f"pr{pr}-response-meta.txt",
+                f"stop_reason={resp.stop_reason} blocks={[b.type for b in resp.content]} usage={resp.usage}\n")
+    if resp.stop_reason == "max_tokens":
+        raise SystemExit(f"review agent hit max_tokens ({resp.usage.output_tokens} output tokens) before finishing")
     return "".join(b.text for b in resp.content if b.type == "text")
 
-raw = ask(system, user)
+try:
+    raw = ask(system, user)
+except SystemExit as e:  # truncated or refused output is UNKNOWN, never green
+    body = f"### Review gate · YELLOW\n\nThe review agent did not finish: {e}. Re-run."
+    upsert_comment(pr, MARKER, body); summary(body); sys.exit(1)
 save_output(f"pr{pr}-raw.json", raw)
 raw = re.sub(r"^```(?:json)?|```$", "", raw.strip(), flags=re.M).strip()
 try:

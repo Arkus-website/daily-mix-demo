@@ -1,10 +1,9 @@
 ---
 ticket: ""            # ticket id or short slug, e.g. share-daily-mix
 title: ""
-owner: ""             # GitHub login of the plan owner (makes the product call)
-second_engineer: ""   # GitHub login; REQUIRED when any trigger applies; must not be the owner
+owner: ""             # GitHub login of the Product Engineer who owns this feature start to finish
 risk_tier: low        # low | medium | high
-triggers: []          # any of: personal-data, auth, permissions, billing, infra-config
+triggers: []          # any of: personal-data, auth, permissions, billing, infra-config; a trigger sets the read depth, not a second reader
 status: draft         # draft | approved  (the gate only accepts approved, on the base branch)
 ---
 

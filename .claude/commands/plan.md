@@ -22,7 +22,7 @@ Draft every section you can answer from the code. Do not ask the engineer for an
 Ask only the questions the repo cannot answer. Ask them one at a time and wait for the answer. Keep each question to two sentences and state what you found that makes it a question.
 
 Mandatory questions, in this order:
-1. Confirm the risk tier and triggers you inferred. Name them. If any trigger applies, ask who the second engineer is (a GitHub login, not the plan owner).
+1. Confirm the risk tier and triggers you inferred. Name them. A trigger raises the depth of the owner's own read of the plan and of the implementation; it does not add a second reader.
 2. For EVERY new boundary: "What may cross it?" Present what the internal object currently contains, field by field, and ask the engineer to name the allowlist. Do not propose a final allowlist yourself; you may say which fields look like personal data or derived from behavior, and why. The engineer decides. Write down what is excluded and the reason.
 3. Any product call you cannot infer (behavior in edge cases, what the user can undo, what happens on revoke/delete).
 4. Which acceptance criteria need a NEGATIVE test (what the output must NOT contain). Propose one per boundary; the engineer confirms.
@@ -35,7 +35,7 @@ Write `docs/plans/<ticket>.md` with the template frontmatter, `status: draft`, `
 ## Step 4 · Stop
 Tell the engineer:
 - the file path
-- the one-line command to open the plan PR: `git checkout -b plan/<ticket> && git add docs/plans/<ticket>.md && git commit -m "plan: <ticket>" && gh pr create --title "Plan: <ticket>" --body "Plan gate. Second engineer: @<login>"`
+- the one-line command to open the plan PR: `git checkout -b plan/<ticket> && git add docs/plans/<ticket>.md && git commit -m "plan: <ticket>" && gh pr create --title "Plan: <ticket>" --body "Plan gate."`
 - that implementation starts only after the plan PR is merged with `status: approved`
 
 Do not implement. Do not modify any file outside `docs/plans/`.

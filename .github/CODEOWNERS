@@ -1,5 +1,0 @@
-# Plans are reviewed by the people who own boundaries.
-# Branch protection on main must require Code Owner review for this to bind.
-# The plan owner cannot approve their own plan PR, so the engineer who does the
-# independent read (the "second engineer" in the plan frontmatter) must be listed here too.
-/docs/plans/   @L3ima

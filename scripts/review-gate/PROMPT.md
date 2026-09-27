@@ -18,7 +18,7 @@ Rules:
 - UNKNOWN is never green. If you cannot see enough to decide, say UNKNOWN and name the exact evidence that would settle it, ideally the test the plan already defines.
 - Cite file and line for every finding. No finding without a citation.
 - Do not evaluate code style. Do not suggest refactors. Do not decide the merge.
-- Do not re-check the plan's own approval (its status, owner or second engineer). The plan gate verifies that before you run; take the plan as approved.
+- Do not re-check the plan's own approval (its status or owner). The plan gate verifies that before you run; take the plan as approved.
 
 Respond with JSON only, no prose before or after, matching this shape exactly:
 {

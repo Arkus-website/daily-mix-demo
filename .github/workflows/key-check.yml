@@ -1,0 +1,24 @@
+name: key-check
+# Manual: confirms the ANTHROPIC_API_KEY secret reaches Actions and is accepted by the API.
+# gh workflow run key-check.yml --ref <branch>
+on:
+  workflow_dispatch:
+jobs:
+  key-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-python@v7
+        with: { python-version: "3.12" }
+      - run: pip install anthropic
+      - env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          REVIEW_MODEL: claude-sonnet-5
+        run: |
+          python - <<'PY'
+          import os, anthropic
+          if not os.environ.get("ANTHROPIC_API_KEY"):
+              raise SystemExit("ANTHROPIC_API_KEY is not set in this repository's Actions secrets")
+          r = anthropic.Anthropic().messages.create(model=os.environ["REVIEW_MODEL"], max_tokens=5,
+                  messages=[{"role": "user", "content": "Reply with the single word OK."}])
+          print("ANTHROPIC_API_KEY works. Model:", r.model, "Reply:", r.content[0].text)
+          PY

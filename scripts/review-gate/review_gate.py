@@ -105,7 +105,7 @@ except Exception as e:  # malformed output is UNKNOWN, never green
 
 v = {i: checks[i]["verdict"].upper() for i in checks}
 if any(v[i] == "FAIL" for i in (1, 2, 5)):
-    color, route = "RED", "Stop. Back to the plan owner to amend or reject." + (" A control change is involved, so the second engineer reads it too." if v[5] == "FAIL" else "")
+    color, route = "RED", "Stop. Back to the plan owner to amend or reject." + (" A control change is involved; the plan owner reads that first." if v[5] == "FAIL" else "")
 elif any(v[i] == "FAIL" for i in (3, 4)) or any(x == "UNKNOWN" for x in v.values()):
     color, route = "YELLOW", "Return for the missing evidence. A senior read is not a substitute."
 else:

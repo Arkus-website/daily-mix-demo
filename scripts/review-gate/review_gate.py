@@ -74,6 +74,9 @@ user = f"""<A plan="{path}">
 </D>
 """
 system = (HERE / "PROMPT.md").read_text()
+if backend == "api" and not os.environ.get("ANTHROPIC_API_KEY"):
+    body = "### Review gate · YELLOW\n\nNo `ANTHROPIC_API_KEY` secret is configured, so the five checks did not run. Add the secret and re-run. Nothing here is evidence."
+    upsert_comment(pr, MARKER, body); summary(body); sys.exit(1)
 save_output(f"pr{pr}-input.txt", user)
 
 def ask(system: str, user: str) -> str:

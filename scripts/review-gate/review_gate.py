@@ -6,8 +6,9 @@ Routing (worksheet, Decision 3):
   Green  = all PASS                        -> eligible for a focused human review
 Red over Yellow over Green. Exit code is non-zero unless Green, so a required status check holds the merge.
 
-Backends (REVIEW_BACKEND): "api" (default, the Anthropic SDK, ANTHROPIC_API_KEY, temperature 0) for
-Actions; "cli" (the `claude` command, your Claude Code login, no temperature control) for local dry runs.
+Backends (REVIEW_BACKEND): "api" (default, the Anthropic SDK, ANTHROPIC_API_KEY) for Actions;
+"cli" (the `claude` command, your Claude Code login) for local dry runs. Neither sets a temperature:
+the current SDK rejects the argument for this model family, so verdict stability comes from running twice.
 """
 import json, os, pathlib, re, sys
 from common import *
@@ -86,7 +87,7 @@ def ask(system: str, user: str) -> str:
         return json.loads(out)["result"]
     import anthropic
     resp = anthropic.Anthropic().messages.create(
-        model=model, max_tokens=4000, temperature=0,
+        model=model, max_tokens=4000,
         system=system, messages=[{"role": "user", "content": user}])
     return "".join(b.text for b in resp.content if b.type == "text")
 

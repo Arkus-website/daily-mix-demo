@@ -70,3 +70,6 @@ jobs:
           CI_RESULT: ${{ needs.ci.outputs.result }}
           CI_LOG: ${{ github.workspace }}/ci-output/ci-output.txt
         run: python review_gate.py
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with: { name: gate-output, path: .gate-out/, if-no-files-found: ignore }

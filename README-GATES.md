@@ -19,7 +19,7 @@ The gate reads the plan from the base branch (`origin/main`), never from the PR 
 Fail-closed rules: no plan → Red; agent output the gate cannot parse → Yellow; no CI output captured → the agent sees `NO CI OUTPUT CAPTURED`, which is an Unknown on check 3.
 
 ## Setup (once, ~20 min)
-1. Repo secret `ANTHROPIC_API_KEY` (Settings → Secrets and variables → Actions). The `review` job uses it with `claude-sonnet-5` at temperature 0. Verify with `gh workflow run key-check.yml`.
+1. Repo secret `ANTHROPIC_API_KEY` (Settings → Secrets and variables → Actions). The `review` job uses it with `claude-sonnet-5`. Verify with `gh workflow run key-check.yml`.
 2. Branch protection on `main`: require status checks `check`, `plan-gate` and `review` (job names). No approving-review requirement: a single owner cannot approve their own PR. Do this AFTER the kit PR merges: the kit PR itself has no plan, so plan-gate is Red on it by design.
 3. Plan PR convention: branch `plan/<ticket>`, file `docs/plans/<ticket>.md`. Implementation PR: branch `feature/<ticket>` or a `Plan: docs/plans/<ticket>.md` line in the PR body.
 
@@ -36,7 +36,7 @@ scripts/review-gate/run-local.sh <pr-number> [ci-run-id]
 ```
 Needs `gh` (logged in), `jq`, `python3`, and the `claude` CLI (it uses your Claude Code login by default, `REVIEW_BACKEND=cli`). Set `REVIEW_BACKEND=api` and `ANTHROPIC_API_KEY` to run the exact Actions path (`pip install anthropic`). Input C is the log of the given CI run, or the latest green CI run on the PR head. `PLAN_FILE=/path/to/plan.md` tests a plan that is not on `main` yet. Inputs and outputs land in `.gate-out/` (ignored by git).
 
-The CLI backend has no temperature control, so wording varies more between runs than in Actions; verdicts are what should stay stable. Run each PR twice before trusting a color.
+Wording varies between runs; verdicts are what should stay stable. Run each PR twice before trusting a color.
 
 ## Webinar sequence (before Tuesday)
 1. Merge this kit to `main` in a PR that only adds these files. plan-gate is Red on it (no plan) and that is expected; it is not a required check yet.

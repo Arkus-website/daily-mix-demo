@@ -87,13 +87,13 @@ FINDING = {"type": "object", "additionalProperties": False,
                           "note": {"type": "string"}}}
 CHECK = {"type": "object", "additionalProperties": False,
          "required": ["id", "name", "verdict", "findings", "summary"],
-         "properties": {"id": {"type": "integer"}, "name": {"type": "string"},
+         "properties": {"id": {"type": "integer", "enum": [1, 2, 3, 4, 5]}, "name": {"type": "string"},
                         "verdict": {"type": "string", "enum": ["PASS", "FAIL", "UNKNOWN"]},
                         "findings": {"type": "array", "items": FINDING},
                         "summary": {"type": "string"}}}
 SCHEMA = {"type": "object", "additionalProperties": False,
           "required": ["checks", "missing_evidence"],
-          "properties": {"checks": {"type": "array", "items": CHECK},
+          "properties": {"checks": {"type": "array", "items": CHECK, "minItems": 5, "maxItems": 5},
                          "missing_evidence": {"type": "array", "items": {"type": "string"}}}}
 
 def ask(system: str, user: str) -> str:

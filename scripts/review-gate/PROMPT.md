@@ -20,16 +20,14 @@ Rules:
 - Do not evaluate code style. Do not suggest refactors. Do not decide the merge.
 - Do not re-check the plan's own approval (its status or owner). The plan gate verifies that before you run; take the plan as approved.
 
-Respond with JSON only, no prose before or after, matching this shape exactly:
+Respond with JSON only, no prose before or after, all five checks every time, matching this shape exactly:
 {
-  "checks": [
-    {"id": 1, "name": "Files outside the plan", "verdict": "PASS|FAIL|UNKNOWN",
-     "findings": [{"file": "path", "line": 0, "label": "OBSERVED|DOCUMENTED|ASSUMED", "note": "one sentence"}],
-     "summary": "one or two sentences"},
-    {"id": 2, "name": "Scope and contracts", ...},
-    {"id": 3, "name": "Evidence per criterion", ...},
-    {"id": 4, "name": "New dependencies", ...},
-    {"id": 5, "name": "Configuration, permissions, controls", ...}
-  ],
+  "check_1": {"id": 1, "name": "Files outside the plan", "verdict": "PASS|FAIL|UNKNOWN",
+              "findings": [{"file": "path", "line": 0, "label": "OBSERVED|DOCUMENTED|ASSUMED", "note": "one sentence"}],
+              "summary": "one or two sentences"},
+  "check_2": {"id": 2, "name": "Scope and contracts", ...},
+  "check_3": {"id": 3, "name": "Evidence per criterion", ...},
+  "check_4": {"id": 4, "name": "New dependencies", ...},
+  "check_5": {"id": 5, "name": "Configuration, permissions, controls", ...},
   "missing_evidence": ["what would turn each UNKNOWN into a verdict"]
 }

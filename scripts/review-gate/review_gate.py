@@ -91,9 +91,11 @@ CHECK = {"type": "object", "additionalProperties": False,
                         "verdict": {"type": "string", "enum": ["PASS", "FAIL", "UNKNOWN"]},
                         "findings": {"type": "array", "items": FINDING},
                         "summary": {"type": "string"}}}
+# The API does not support minItems above 1, so the five checks are five required
+# properties instead of an array. The parser below accepts both shapes.
 SCHEMA = {"type": "object", "additionalProperties": False,
-          "required": ["checks", "missing_evidence"],
-          "properties": {"checks": {"type": "array", "items": CHECK, "minItems": 5, "maxItems": 5},
+          "required": ["check_1", "check_2", "check_3", "check_4", "check_5", "missing_evidence"],
+          "properties": {**{f"check_{i}": CHECK for i in range(1, 6)},
                          "missing_evidence": {"type": "array", "items": {"type": "string"}}}}
 
 def ask(system: str, user: str) -> str:
@@ -128,7 +130,10 @@ save_output(f"pr{pr}-raw.json", raw)
 raw = re.sub(r"^```(?:json)?|```$", "", raw.strip(), flags=re.M).strip()
 try:
     result = json.loads(raw)
-    checks = {int(c["id"]): c for c in result["checks"]}
+    if "checks" in result:  # array shape (CLI backend, or older output)
+        checks = {int(c["id"]): c for c in result["checks"]}
+    else:  # object shape from the structured-output schema
+        checks = {i: result[f"check_{i}"] for i in range(1, 6) if f"check_{i}" in result}
     assert set(checks) == {1, 2, 3, 4, 5}, f"check ids were {sorted(checks)}"
     for c in checks.values():
         assert str(c.get("verdict", "")).upper() in ("PASS", "FAIL", "UNKNOWN"), f"bad verdict {c.get('verdict')!r}"

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { NextRequest } from 'next/server';
 import { GET as getMe } from './me/route';
 import { DELETE as unsave, POST as save } from './mix/[id]/save/route';
+import { DELETE as unshare, POST as share } from './mix/[id]/share/route';
 import { GET as getToday } from './mix/today/route';
 
 const req = (path: string, userId?: string, method = 'GET') =>
@@ -54,6 +55,44 @@ describe('POST/DELETE /api/mix/:id/save', () => {
 
   it('returns 404 for an unknown mix', async () => {
     expect((await save(req('/api/mix/nope/save', 'u_ben', 'POST'), params('nope'))).status).toBe(404);
+  });
+});
+
+describe('POST/DELETE /api/mix/:id/share', () => {
+  it('creates a share token for the owner, and returns the same one on a second call', async () => {
+    const { id } = await (await getToday(req('/api/mix/today', 'u_ana'))).json();
+
+    const first = await (await share(req(`/api/mix/${id}/share`, 'u_ana', 'POST'), params(id))).json();
+    expect(first.token).toEqual(expect.any(String));
+
+    const second = await (await share(req(`/api/mix/${id}/share`, 'u_ana', 'POST'), params(id))).json();
+    expect(second.token).toBe(first.token);
+  });
+
+  it('revokes on DELETE, and re-sharing after a revoke issues a fresh token', async () => {
+    const { id } = await (await getToday(req('/api/mix/today', 'u_chloe'))).json();
+    const { token } = await (await share(req(`/api/mix/${id}/share`, 'u_chloe', 'POST'), params(id))).json();
+
+    expect(await (await unshare(req(`/api/mix/${id}/share`, 'u_chloe', 'DELETE'), params(id))).json()).toEqual({ revoked: true });
+
+    const { token: reshared } = await (await share(req(`/api/mix/${id}/share`, 'u_chloe', 'POST'), params(id))).json();
+    expect(reshared).not.toBe(token);
+  });
+
+  it('requires a session', async () => {
+    const { id } = await (await getToday(req('/api/mix/today', 'u_ben'))).json();
+    expect((await share(req(`/api/mix/${id}/share`, undefined, 'POST'), params(id))).status).toBe(401);
+    expect((await unshare(req(`/api/mix/${id}/share`, undefined, 'DELETE'), params(id))).status).toBe(401);
+  });
+
+  it("does not let one user share or revoke another user's mix", async () => {
+    const { id } = await (await getToday(req('/api/mix/today', 'u_ben'))).json();
+    expect((await share(req(`/api/mix/${id}/share`, 'u_dev', 'POST'), params(id))).status).toBe(404);
+    expect((await unshare(req(`/api/mix/${id}/share`, 'u_dev', 'DELETE'), params(id))).status).toBe(404);
+  });
+
+  it('returns 404 for an unknown mix', async () => {
+    expect((await share(req('/api/mix/nope/share', 'u_ben', 'POST'), params('nope'))).status).toBe(404);
   });
 });
 

@@ -19,13 +19,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <PlayerProvider>
           <PhoneFrame>
             <main className="no-scrollbar relative flex-1 overflow-y-auto overscroll-contain">{children}</main>
-            {user && (
-              <>
-                <MiniPlayer />
-                <TabBar />
-                <NowPlaying />
-              </>
-            )}
+            {/* A guest opening a shared mix has no session but still needs Play to work. */}
+            <MiniPlayer />
+            {user && <TabBar />}
+            <NowPlaying />
           </PhoneFrame>
         </PlayerProvider>
       </body>

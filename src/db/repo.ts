@@ -108,3 +108,36 @@ export function listSavedMixes(userId: string): { mix: DailyMix; savedAt: string
     .all(userId) as { payload_json: string; saved_at: string }[];
   return rows.map((r) => ({ mix: JSON.parse(r.payload_json) as DailyMix, savedAt: r.saved_at }));
 }
+
+// Mix shares
+
+/** The mix's active share token, or null if it has never been shared or was revoked. */
+export function findShareToken(mixId: string): string | null {
+  const row = getDb().prepare('SELECT token FROM mix_shares WHERE mix_id = ? AND revoked_at IS NULL').get(mixId) as
+    | { token: string }
+    | undefined;
+  return row?.token ?? null;
+}
+
+/** Creates the mix's share row, replacing a revoked one so a mix can be re-shared under a fresh token. */
+export function createShareToken(token: string, mixId: string, ownerId: string, createdAt: string): void {
+  getDb()
+    .prepare('INSERT OR REPLACE INTO mix_shares (token, mix_id, owner_id, created_at, revoked_at) VALUES (?, ?, ?, ?, NULL)')
+    .run(token, mixId, ownerId, createdAt);
+}
+
+export function revokeShare(mixId: string, revokedAt: string): void {
+  getDb().prepare('UPDATE mix_shares SET revoked_at = ? WHERE mix_id = ?').run(revokedAt, mixId);
+}
+
+/** The shared mix for a token, or null if the token is unknown or its share was revoked. */
+export function findMixByShareToken(token: string): DailyMix | null {
+  const row = getDb()
+    .prepare(
+      `SELECT m.payload_json FROM mix_shares s
+       JOIN daily_mixes m ON m.id = s.mix_id
+       WHERE s.token = ? AND s.revoked_at IS NULL`,
+    )
+    .get(token) as { payload_json: string } | undefined;
+  return row ? (JSON.parse(row.payload_json) as DailyMix) : null;
+}

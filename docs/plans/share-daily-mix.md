@@ -30,7 +30,7 @@ status: approved
 
 ### Contracts that stay stable
 - `GET /api/mix/today` response shape (consumed by `src/app/mix/mix-view.tsx` and `src/app/api/api.test.ts`) — unchanged; share state is fetched separately, not added to this payload.
-- `DailyMix`, `MixItem`, `Track` types (`src/lib/types.ts`) — unchanged. The public payload is a new, separate shape (`PublicMix`, in `src/lib/share.ts`), not a variant of `DailyMix`.
+- `DailyMix`, `MixItem`, `Track` types (`src/lib/types.ts`) — unchanged. The public payload is a new, separate shape (`PublicMix`, in `src/lib/public-mix.ts`), not a variant of `DailyMix`.
 - `POST/DELETE /api/mix/:id/save` — unchanged, still the only route touching `saved_mixes`.
 - `Cover`'s existing callers (`mix-view.tsx`, `page.tsx`, `saved/page.tsx`, `mini-player.tsx`, `now-playing.tsx`) — unchanged behavior for any real catalogue id; the `onError` fallback only ever engages for the synthetic ids the share path introduces.
 
@@ -53,7 +53,7 @@ Nothing else. Specifically excluded: `userId`, `mixId`, the real catalogue `trac
 |---|-----------|----------|
 | 1 | Owner can get a share link for today's mix from `/mix` | e2e: click Share, a `/share/:token` URL appears |
 | 2 | Opening the link with no session cookie renders the mix (heading, 3 tracks, Play) | e2e: fresh browser context (no `dm_session` cookie) loads `/share/:token`, sees heading + 3 tracks, presses Play, mini-player advances |
-| 3 | The public payload contains only the allowlisted fields | `src/lib/share.test.ts`: `toPublicMix()` output's keys (incl. nested) equal exactly the allowlist; explicit `expect(...).not.toContain`/`not.toHaveProperty` for `userId`, `computedFrom`, `reason`, `evidence`, real track `id` |
+| 3 | The public payload contains only the allowlisted fields | `src/lib/public-mix.test.ts`: `toPublicMix()` output's keys (incl. nested) equal exactly the allowlist; explicit `expect(...).not.toContain`/`not.toHaveProperty` for `userId`, `computedFrom`, `reason`, `evidence`, real track `id` |
 | 4 | A revoked token 404s; an unknown token takes the same null path | e2e: revoke, then `GET /share/<token>` → 404. Unknown tokens: `findMixByShareToken` returns null and the page calls `notFound()` (same branch, by inspection) |
 | 5 | Only the mix's owner can create or revoke its share | `api.test.ts`: another user's session → `POST`/`DELETE /api/mix/:id/share` → 404 (same pattern as the save route) |
 | 6 | Revoking stops the link and touches nothing but `mix_shares` | `api.test.ts`: revoke returns `{revoked: true}` and re-sharing issues a fresh token; `repo.ts` writes only `mix_shares.revoked_at` (by inspection) |
